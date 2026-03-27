@@ -3,22 +3,54 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { authService } from '@/services/auth'
 
 export default function RegisterPage() {
   const router = useRouter()
   const [formData, setFormData] = useState({
-    fullName: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    accountType: 'client',
+    phoneNumber: '',
+    country: '',
+    userType: 'Client',
   })
   const [showPassword, setShowPassword] = useState(false)
   const [acceptTerms, setAcceptTerms] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    router.push('/dashboard')
+    setError('')
+    setIsLoading(true)
+
+    try {
+      const response = await authService.register({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        phoneNumber: formData.phoneNumber,
+        country: formData.country,
+        userType: formData.userType
+      })
+      
+      authService.setAuth(response.token, response.user)
+      
+      // Redirect based on user type
+      if (response.user.userType === 'Freelancer') {
+        router.push('/dashboard/freelancer')
+      } else {
+        router.push('/dashboard/client')
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.errors?.[0] || 'Registration failed. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const isPasswordStrong = formData.password.length >= 8 && 
@@ -97,9 +129,9 @@ export default function RegisterPage() {
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-xl border border-slate-200 dark:border-slate-800">
             <div className="flex gap-2 mb-6">
               <button
-                onClick={() => setFormData({...formData, accountType: 'client'})}
+                onClick={() => setFormData({...formData, userType: 'Client'})}
                 className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${
-                  formData.accountType === 'client'
+                  formData.userType === 'Client'
                     ? 'bg-primary text-background-dark shadow-lg shadow-primary/20'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                 }`}
@@ -107,9 +139,9 @@ export default function RegisterPage() {
                 I'm a Client
               </button>
               <button
-                onClick={() => setFormData({...formData, accountType: 'freelancer'})}
+                onClick={() => setFormData({...formData, userType: 'Freelancer'})}
                 className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${
-                  formData.accountType === 'freelancer'
+                  formData.userType === 'Freelancer'
                     ? 'bg-primary text-background-dark shadow-lg shadow-primary/20'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                 }`}
@@ -119,20 +151,46 @@ export default function RegisterPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">person</span>
-                  <input
-                    type="text"
-                    placeholder="John Kamau"
-                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                    required
-                  />
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                  <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    First Name
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">person</span>
+                    <input
+                      type="text"
+                      placeholder="John"
+                      className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                      value={formData.firstName}
+                      onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    Last Name
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">person</span>
+                    <input
+                      type="text"
+                      placeholder="Kamau"
+                      className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                      value={formData.lastName}
+                      onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -149,7 +207,43 @@ export default function RegisterPage() {
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                     required
+                    disabled={isLoading}
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    Phone Number
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">phone</span>
+                    <input
+                      type="tel"
+                      placeholder="+254 123 456 789"
+                      className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                      value={formData.phoneNumber}
+                      onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    Country
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">location_on</span>
+                    <input
+                      type="text"
+                      placeholder="Kenya"
+                      className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                      value={formData.country}
+                      onChange={(e) => setFormData({...formData, country: e.target.value})}
+                      disabled={isLoading}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -166,11 +260,13 @@ export default function RegisterPage() {
                     value={formData.password}
                     onChange={(e) => setFormData({...formData, password: e.target.value})}
                     required
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    disabled={isLoading}
                   >
                     <span className="material-symbols-outlined">{showPassword ? 'visibility_off' : 'visibility'}</span>
                   </button>
@@ -204,6 +300,7 @@ export default function RegisterPage() {
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 {formData.confirmPassword && formData.password !== formData.confirmPassword && (
@@ -219,6 +316,7 @@ export default function RegisterPage() {
                   checked={acceptTerms}
                   onChange={(e) => setAcceptTerms(e.target.checked)}
                   required
+                  disabled={isLoading}
                 />
                 <label htmlFor="terms" className="text-sm text-slate-600 dark:text-slate-400">
                   I agree to the{' '}
@@ -230,11 +328,20 @@ export default function RegisterPage() {
 
               <button
                 type="submit"
-                disabled={!acceptTerms || formData.password !== formData.confirmPassword || !isPasswordStrong}
+                disabled={!acceptTerms || formData.password !== formData.confirmPassword || !isPasswordStrong || isLoading}
                 className="w-full bg-primary text-background-dark font-bold py-4 rounded-xl hover:opacity-90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create Account
-                <span className="material-symbols-outlined">arrow_forward</span>
+                {isLoading ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin">refresh</span>
+                    Creating Account...
+                  </>
+                ) : (
+                  <>
+                    Create Account
+                    <span className="material-symbols-outlined">arrow_forward</span>
+                  </>
+                )}
               </button>
             </form>
 
